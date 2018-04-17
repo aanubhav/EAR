@@ -19,6 +19,8 @@ import android.*;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -83,8 +85,11 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import de.hdodenhof.circleimageview.CircleImageView;
@@ -117,6 +122,10 @@ public class MainActivity extends AppCompatActivity
     //location variables
     private LocationManager locationManager;
     private LocationListener locationListener;
+    double lat;
+    double lon;
+    Geocoder geocoder;
+    String locality;
 
     // Firebase instance variables
     private FirebaseAuth mFirebaseAuth;
@@ -212,8 +221,7 @@ public class MainActivity extends AppCompatActivity
                         .setDeveloperModeEnabled(true)
                         .build();
 
-        // Define default config values. Defaults are used when fetched config values are not
-        // available. Eg: if an error occurred fetching values from the server.
+
         Map<String, Object> defaultConfigMap = new HashMap<>();
         defaultConfigMap.put("friendly_msg_length", 10L);
 
@@ -386,12 +394,28 @@ public class MainActivity extends AppCompatActivity
         editText = (EditText) findViewById(R.id.messageEditText);
         button = (Button) findViewById(R.id.button);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                // editText.setText("Help is needed at  : "+location.getLatitude()+" "+location.getLongitude(), TextView.BufferType.EDITABLE);
                 DecimalFormat dec = new DecimalFormat("#.###");
-                emergencyMessage = "Help is needed at  : "+"\n"+"lat :"+dec.format(location.getLatitude())+"\n"+"lon :"+dec.format(location.getLongitude());
+                lat = location.getLatitude();
+                lon = location.getLongitude();
+               // emergencyMessage = "Help is needed at  : "+"\n"+"lat :"+dec.format(location.getLatitude())+"\n"+"lon :"+dec.format(location.getLongitude());
+
+                try {
+                    List<Address> listAddresses = geocoder.getFromLocation(lat, lon, 1);
+                    if(null!=listAddresses&&listAddresses.size()>0){
+                        // locality = listAddresses.get(0).getAddressLine(0);
+                        locality = listAddresses.get(0).getSubLocality();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                emergencyMessage = "Help is needed at :"+"\n"+"lat:"+dec.format(location.getLatitude())+"\n"+"lon:"+dec.format(location.getLongitude())+"\nat:"+locality ;
+
+
 
 
             }
@@ -448,7 +472,8 @@ public class MainActivity extends AppCompatActivity
              //   Editable current = editText.getText();
                // editText.setText(current+emergencyMessage, TextView.BufferType.EDITABLE);
                 Editable current = editText.getText();
-                editText.setText(current+emergencyMessage, TextView.BufferType.EDITABLE);
+                if(emergencyMessage != null)
+                    editText.setText(current+emergencyMessage, TextView.BufferType.EDITABLE);
 
 
             }
@@ -648,9 +673,9 @@ public class MainActivity extends AppCompatActivity
                 sendInvitation();
                 return true;
 
-            case R.id.fresh_config_menu:
-                fetchConfig();
-                return true;
+          //  case R.id.fresh_config_menu:
+              //  fetchConfig();
+              //  return true;
 
 
             case R.id.sign_out_menu:
